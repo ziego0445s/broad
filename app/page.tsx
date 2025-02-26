@@ -1,101 +1,160 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from './firebase/config';
+import { GuestbookEntry } from './types/guestbook';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [entries, setEntries] = useState<GuestbookEntry[]>([]);
+  const [name, setName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('guestbook_name') || '';
+    }
+    return '';
+  });
+  const [message, setMessage] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    const q = query(collection(db, 'guestbook'), orderBy('createdAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const guestbookEntries = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      })) as GuestbookEntry[];
+      
+      setEntries(guestbookEntries);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setName(newName);
+    localStorage.setItem('guestbook_name', newName);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name.trim() || !message.trim()) return;
+
+    try {
+      await addDoc(collection(db, 'guestbook'), {
+        name,
+        message,
+        createdAt: new Date()
+      });
+
+      setMessage('');
+    } catch (error) {
+      console.error('Error adding entry:', error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50 to-sky-100">
+      <div className="max-w-2xl mx-auto p-4">
+        {/* 헤더 */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 mb-6">
+          <h1 className="text-4xl font-bold text-sky-800 text-center">
+            AI 공부방 ✏️
+          </h1>
+          <p className="text-center text-sky-600 mt-2">
+            AI 학습에 대한 여러분의 생각을 공유해주세요
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* 메시지 목록 */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6 h-[500px] overflow-y-auto">
+          <div className="space-y-6">
+            {entries.map((entry) => (
+              <div key={entry.id} className="flex flex-col">
+                <div className="flex items-center mb-2">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-sky-400 to-sky-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                    {entry.name.charAt(0)}
+                  </div>
+                  <div className="ml-3">
+                    <span className="font-medium text-sky-800">{entry.name}</span>
+                    <span className="ml-3 text-sm text-sky-500">
+                      {entry.createdAt?.toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-sky-50 to-sky-100 rounded-2xl p-4 ml-12 relative message-bubble shadow-sm">
+                  <p className="text-sky-800 leading-relaxed">{entry.message}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 입력 폼 */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              type="text"
+              id="name"
+              value={name}
+              onChange={handleNameChange}
+              placeholder="이름을 입력하세요"
+              className="w-full px-6 py-3 rounded-xl border-2 border-sky-100 focus:border-sky-300 focus:outline-none bg-white/50 placeholder-sky-400 text-sky-800"
+              required
+            />
+            
+            <div className="flex gap-3">
+              <textarea
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="메시지를 입력하세요"
+                className="flex-1 px-6 py-3 rounded-xl border-2 border-sky-100 focus:border-sky-300 focus:outline-none bg-white/50 placeholder-sky-400 text-sky-800"
+                rows={3}
+                required
+              />
+              <button
+                type="submit"
+                className="px-8 bg-gradient-to-r from-sky-400 to-sky-500 text-white rounded-xl hover:from-sky-500 hover:to-sky-600 transition-all duration-200 font-medium shadow-md"
+              >
+                전송
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .message-bubble::before {
+          content: '';
+          position: absolute;
+          left: -12px;
+          top: 16px;
+          border-style: solid;
+          border-width: 10px 12px 10px 0;
+          border-color: transparent #f0f9ff transparent transparent;
+        }
+        
+        /* 스크롤바 스타일링 */
+        div::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        div::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        div::-webkit-scrollbar-thumb {
+          background: #93c5fd;
+          border-radius: 4px;
+        }
+        
+        div::-webkit-scrollbar-thumb:hover {
+          background: #60a5fa;
+        }
+      `}</style>
     </div>
   );
 }
