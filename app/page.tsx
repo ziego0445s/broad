@@ -6,16 +6,21 @@ import { db } from './firebase/config';
 import { GuestbookEntry } from './types/guestbook';
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
-  const [name, setName] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('guestbook_name') || '';
-    }
-    return '';
-  });
+  const [name, setName] = useState('');
   const [message, setMessage] = useState('');
 
+  // 컴포넌트가 마운트된 후에만 localStorage를 사용
   useEffect(() => {
+    const savedName = localStorage.getItem('guestbook_name') || '';
+    setName(savedName);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
     const q = query(collection(db, 'guestbook'), orderBy('createdAt', 'desc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -29,7 +34,7 @@ export default function Home() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [mounted]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -55,8 +60,30 @@ export default function Home() {
     }
   };
 
+  if (!mounted) {
+    return null; // 또는 로딩 상태를 보여줄 수 있습니다
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 to-sky-100">
+      {/* 상단 광고 섹션 */}
+      {mounted && (
+        <div className="flex justify-center py-4">
+          <ins 
+            className="kakao_ad_area" 
+            style={{display: "none"}}
+            data-ad-unit="DAN-UI7Ciq3UMuGfrnPw"
+            data-ad-width="320"
+            data-ad-height="50">
+          </ins>
+          <script 
+            type="text/javascript" 
+            src="//t1.daumcdn.net/kas/static/ba.min.js" 
+            async>
+          </script>
+        </div>
+      )}
+
       <div className="max-w-2xl mx-auto p-4">
         {/* 헤더 */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-8 mb-6">
@@ -125,6 +152,24 @@ export default function Home() {
           </form>
         </div>
       </div>
+
+      {/* 하단 광고 섹션 */}
+      {mounted && (
+        <div className="flex justify-center py-8">
+          <ins 
+            className="kakao_ad_area" 
+            style={{display: "none"}}
+            data-ad-unit="DAN-d0wFw74otxuvVaQJ"
+            data-ad-width="300"
+            data-ad-height="250">
+          </ins>
+          <script 
+            type="text/javascript" 
+            src="//t1.daumcdn.net/kas/static/ba.min.js" 
+            async>
+          </script>
+        </div>
+      )}
 
       <style jsx>{`
         .message-bubble::before {
